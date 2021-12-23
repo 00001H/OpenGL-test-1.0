@@ -157,6 +157,10 @@ class Shader{
             int location = prepareUniform(name);
             glUniform1i(location,x);
         }
+        void uniform1f(const char* name,float x){
+            int location = prepareUniform(name);
+            glUniform1f(location,x);
+        }
         void uniform3f(const char* name,float x,float y,float z){
             int location = prepareUniform(name);
             glUniform3f(location,x,y,z);
@@ -167,6 +171,10 @@ class Shader{
         void uniform4f(const char* name,float x,float y,float z,float w){
             int location = prepareUniform(name);
             glUniform4f(location,x,y,z,w);
+        }
+        void uniformMatrix3fv(const char* name,glm::mat3 matrix){
+            int location = prepareUniform(name);
+            glUniformMatrix3fv(location,1,GL_FALSE,glm::value_ptr(matrix));
         }
         void uniformMatrix4fv(const char* name,glm::mat4 matrix){
             int location = prepareUniform(name);

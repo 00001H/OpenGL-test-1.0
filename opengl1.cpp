@@ -11,6 +11,8 @@
 #include"glutils.h"
 #include"cam.h"
 using namespace std;
+using glm::transpose;
+using glm::inverse;
 using glm::lookAt;
 using glm::fract;
 using glm::cross;
@@ -23,6 +25,7 @@ using glm::rotate;
 using glm::translate;
 using glm::radians;
 using glm::vec3;
+using glm::mat3;
 using glm::vec4;
 using glm::mat4;
 #define cstr const char*
@@ -83,7 +86,7 @@ int main(){
     SW = mode->width;
     SH = mode->height;
     int DSW=SW,DSH=SH;
-    win = mkwin(SW,SH,"Window!",primarymon);
+    win = mkwin(SW,SH,"Window!");//,primarymon);
     glfwMakeContextCurrent(win);
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
         exit(-1);
@@ -177,13 +180,14 @@ int main(){
     double gravity = -0.003;
     double yvel = 0;
     float clearr = 0.2;
+    mat3 nmat;
     mat4 proj,model,view;
     proj = perspective(radians(45.0),(double)DSW/(double)DSH,0.1,100.0);
     float camspd = 0.035;
     double lastFrame = glfwGetTime();
     int fps = 60;
     vec3 lightPos = vec3(1.2,1.0,2.0);
-    vec3 ambient = vec3(1,1,0);
+    vec3 ambient = vec3(1.0,1.0,1.0);
     //Input settings
     glfwSetKeyCallback(win,onkeydown);
     setMouseGrab(true);
@@ -270,15 +274,24 @@ int main(){
         shader.uniformMatrix4fv("view",view);
         shader.uniformMatrix4fv("model",model);
         shader.uniform3fv("ambient",ambient);
+        shader.uniform1f("ambstr",0.12);
         shader.uniform3fv("light.color",ambient);
+        shader.uniform1f("light.diffusestr",1.0);
+        shader.uniform1f("light.specularstr",0.5);
+        shader.uniform1f("material.shininess",32);
+        shader.uniform3fv("material.ambient",vec3(1.0));
+        shader.uniform3fv("material.diffuse",vec3(1.0));
+        shader.uniform3fv("material.specular",vec3(1.0));
+        shader.uniform3fv("campos",cam.pos);
         glClearColor(clearr,0.3,0.3,1.0);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         bind2DTo(texture,0);
         bind2DTo(texture2,1);
-        glDrawArrays(GL_TRIANGLES,0,36);
         for(double i=0;i<20;i++){
             mat4 modell = translate(model,vec3(4.0*sin(radians(i*60.0)),0,4.0*cos(radians(i*60.0))));
             shader.uniformMatrix4fv("model",modell);
+            nmat = mat3(transpose(inverse(modell)));
+            shader.uniformMatrix3fv("normalmat",nmat);
             glDrawArrays(GL_TRIANGLES,0,36);
         }
         lssh.use();
