@@ -160,7 +160,7 @@ int main(){
     shader.uniform1i("material.diffuse",0);
     shader.uniform1i("material.specular",1);
     shader.uniform1i("material.emission",2);
-    shader.uniform1i("material.hasemission",1);
+//    shader.uniform1i("material.hasemission",1);
     //Mode Settings
 //    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     //Load VBO/VAO(/EBO)
@@ -281,7 +281,14 @@ int main(){
         shader.uniform3fv("ambient",ambient);
         shader.uniform1f("ambstr",0.06);
         shader.uniform3fv("light.color",ambient);
-        shader.uniform3fv("light.pos",lightpos);
+        shader.uniform3fv("light.pos",cam.pos);//lightpos);
+        shader.uniform1f("light.constant",1.0);
+        shader.uniform1f("light.linear",0.09);
+        shader.uniform1f("light.quadratic",0.032);
+        shader.uniform1f("light.dpfull",cos(radians(3.5)));
+        shader.uniform1f("light.dpzero",cos(radians(5.5)));
+        shader.uniform3fv("light.direction",cam.direction());//vec3(-0.5,-0.5,0.0));
+        shader.uniform1i("light.kind",2);
         shader.uniform1f("light.diffusestr",1.0);
         shader.uniform1f("light.specularstr",0.5);
         shader.uniform1f("material.shininess",32);
@@ -290,7 +297,8 @@ int main(){
         glClearColor(clearr,0.3,0.3,1.0);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         for(double i=0;i<20;i++){
-            mat4 modell = translate(model,vec3(4.0*sin(radians(i*60.0)),0,4.0*cos(radians(i*60.0))));
+//            mat4 modell = translate(model,vec3(4.0*sin(radians(i*60.0)),0,4.0*cos(radians(i*60.0))));
+            mat4 modell = translate(model,vec3(0.0,0.0,i));
             shader.uniformMatrix4fv("model",modell);
             nmat = mat3(transpose(inverse(modell)));
             shader.uniformMatrix3fv("normalmat",nmat);
