@@ -1,5 +1,4 @@
 #version 420 core
-#define proc(x) (x/2.0+0.5)
 layout(location = 0) in vec3 vpos;
 layout(location = 1) in vec2 vtc;
 layout(location = 2) in vec3 vnormal;

@@ -151,10 +151,16 @@ int main(){
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
     stbi_set_flip_vertically_on_load(true);
-    uint texture = loadTexture2D("container.jpg");
-    uint texture2 = loadTexture2D("awesomeface.png");
-    shader.uniform1i("tex1",0);
-    shader.uniform1i("tex2",1);
+    uint texture = loadTexture2D("container2.png");
+    uint texture2 = loadTexture2D("cont2spec.png");
+    uint texture3 = loadTexture2D("matrix.jpg");
+    bind2DTo(texture,0);
+    bind2DTo(texture2,1);
+    bind2DTo(texture3,2);
+    shader.uniform1i("material.diffuse",0);
+    shader.uniform1i("material.specular",1);
+    shader.uniform1i("material.emission",2);
+    shader.uniform1i("material.hasemission",1);
     //Mode Settings
 //    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     //Load VBO/VAO(/EBO)
@@ -186,8 +192,8 @@ int main(){
     float camspd = 0.035;
     double lastFrame = glfwGetTime();
     int fps = 60;
-    vec3 lightPos = vec3(1.2,1.0,2.0);
     vec3 ambient = vec3(1.0,1.0,1.0);
+    vec3 lightpos;
     //Input settings
     glfwSetKeyCallback(win,onkeydown);
     setMouseGrab(true);
@@ -264,29 +270,25 @@ int main(){
             yvel = 0;
             cam.pos[1] = 0;
         }
-        shader.uniform1i("tex1",0);
-        shader.uniform1i("tex2",1);
         view = cam.viewmatrix();
         glBindVertexArray(vao);
         model = mat4(1.0);
+        lightpos = vec3(0.0,1.0,0.0);
         shader.use();
         shader.uniformMatrix4fv("proj",proj);
         shader.uniformMatrix4fv("view",view);
         shader.uniformMatrix4fv("model",model);
         shader.uniform3fv("ambient",ambient);
-        shader.uniform1f("ambstr",0.12);
+        shader.uniform1f("ambstr",0.06);
         shader.uniform3fv("light.color",ambient);
+        shader.uniform3fv("light.pos",lightpos);
         shader.uniform1f("light.diffusestr",1.0);
         shader.uniform1f("light.specularstr",0.5);
         shader.uniform1f("material.shininess",32);
-        shader.uniform3fv("material.ambient",vec3(1.0));
-        shader.uniform3fv("material.diffuse",vec3(1.0));
         shader.uniform3fv("material.specular",vec3(1.0));
         shader.uniform3fv("campos",cam.pos);
         glClearColor(clearr,0.3,0.3,1.0);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        bind2DTo(texture,0);
-        bind2DTo(texture2,1);
         for(double i=0;i<20;i++){
             mat4 modell = translate(model,vec3(4.0*sin(radians(i*60.0)),0,4.0*cos(radians(i*60.0))));
             shader.uniformMatrix4fv("model",modell);
@@ -296,7 +298,7 @@ int main(){
         }
         lssh.use();
         model = mat4(1.0);
-        model = translate(model,lightPos);
+        model = translate(model,lightpos);
         model = scale(model,vec3(0.2));
         lssh.uniformMatrix4fv("proj",proj);
         lssh.uniformMatrix4fv("view",view);
