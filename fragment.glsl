@@ -33,7 +33,8 @@ out vec4 FragColor;
 layout(location = 0) in vec3 fpos;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tc;
-uniform Light light;
+#define lightcount $$LIGHT_COUNT
+uniform Light lights[lightcount];
 uniform Material material;
 uniform vec3 ambient;
 uniform vec3 campos;
@@ -54,11 +55,11 @@ vec3 calculateLighting(Light lgt,Material mater,vec2 texc, vec3 normx){
         attenu = 1.0/(lgt.constant+(lgt.linear+lgt.quadratic*dist)*dist);
     }
     double diffstr = max(dot(norm,ldir),0.0);
-    vec3 diffuse = lgt.diffusestr*light.color*(diffstr*texture(mater.diffuse,texc).rgb);
+    vec3 diffuse = lgt.diffusestr*lgt.color*(diffstr*texture(mater.diffuse,texc).rgb);
     vec3 viewdir = normalize(campos-fpos);
     vec3 rfdir = reflect(-ldir,norm);
     double spec = pow(max(dot(viewdir,rfdir),0.0),mater.shininess);
-    vec3 specular = lgt.specularstr*light.color*(spec*texture(mater.specular,texc).rgb);
+    vec3 specular = lgt.specularstr*lgt.color*(spec*texture(mater.specular,texc).rgb);
     vec3 emmis = vec3(0.0);
     if(mater.hasemission){
         emmis = texture(mater.emission,texc).rgb;
@@ -73,7 +74,9 @@ vec3 calculateLighting(Light lgt,Material mater,vec2 texc, vec3 normx){
 void main(){
     vec3 lighting = vec3(0.0);
     lighting += (ambient+texture(material.diffuse,tc).rgb)*ambstr;
-    lighting += calculateLighting(light,material,tc,normal);
+    for(int i=0;i<lightcount;i++){
+        lighting += calculateLighting(lights[i],material,tc,normal);
+    }
     FragColor = vec4(lighting,1.0);
 
 }

@@ -78,7 +78,42 @@ void oncursormove(GLFWwindow* win,double x,double y){
     }
     events.push_back({MOUSE,MOUSE_MOVE,make_pair(x,y)});
 }
+string replace(string st,string src,string dst){
+    int start = 0;
+    size_t loc;
+    while((loc = st.find(src,start))!=string::npos){
+        st = st.replace(loc,src.length(),dst);
+        start = loc;
+    }
+    return st;
+}
+string ucat(cstr x,cstr y){
+    char dest[strlen(x)+strlen(y)+10];
+    strcpy(dest,x);
+    strcat(dest,y);
+    return dest;
+}
+#define within(tgt,bound1,bound2) ((bound1<tgt&&tgt<bound2)||(bound2<tgt&&tgt<bound1))
+struct Light{//copy-pasted from fragment shader
+    int kind;//0:point light, 1:directional light, 2:directional point light
+    vec3 direction;
+    vec3 color;
+    vec3 pos;
+    double diffusestr;
+    double specularstr;
+
+    double constant;
+    double linear;
+    double quadratic;
+
+    double dpfull;
+    double dpzero;
+};
+struct Cube{
+    vec3 pos,scale;
+};
 int main(){
+    int lcount = 2;
     initGLFW(3,3,GLFW_OPENGL_CORE_PROFILE);
     atexit(glfwTerminate);
     GLFWmonitor* primarymon = glfwGetPrimaryMonitor();
@@ -143,8 +178,8 @@ int main(){
     //Blending
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     //Load shaders
-    Shader shader = Shader("vertex.glsl","fragment.glsl");
-    Shader lssh = Shader("lsrcvertex.glsl","lsrcfragment.glsl");
+    Shader shader = loadshaderfiles("vertex.glsl","fragment.glsl",false);
+    Shader lssh = loadshaderfiles("lsrcvertex.glsl","lsrcfragment.glsl");
     //Load Textures
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
@@ -193,12 +228,21 @@ int main(){
     double lastFrame = glfwGetTime();
     int fps = 60;
     vec3 ambient = vec3(1.0,1.0,1.0);
-    vec3 lightpos;
     //Input settings
     glfwSetKeyCallback(win,onkeydown);
     setMouseGrab(true);
     glfwSetCursorPosCallback(win,oncursormove);
     glfwSetMouseButtonCallback(win,onclick);
+    events.push_back({KEY,GLFW_PRESS,GLFW_KEY_ENTER});
+    cstr lpre = "lights[";
+    cstr lpost = "].";
+    Light lgts[lcount];
+    int frame=0;
+    Cube cubes[20];
+    for(int i=0;i<20;i++){
+        cubes[i].pos = vec3(0.0,0.0,i);
+        cubes[i].scale = vec3(1.0);
+    }
     while(!glfwWindowShouldClose(win)){
         glfwPollEvents();
         for(Event event:getEvents()){
@@ -214,7 +258,9 @@ int main(){
                             break;
                         }
                         case GLFW_KEY_ENTER:{
-                            shader.reload();
+                            reloadshaderfiles(shader,false);
+                            shader.fshad = replace(shader.fshad,"$$LIGHT_COUNT",to_string(lcount));
+                            shader.recompile();
                             break;
                         }
                     }
@@ -258,7 +304,7 @@ int main(){
             cam.pos -= cam.xzright()*camspd;
         }
         if(keyDown(win,GLFW_KEY_SPACE)){
-            if(cam.pos[1]==0){
+            if(true){//cam.pos[1]==0){
                 yvel = 0.05;
             }
         }
@@ -266,39 +312,84 @@ int main(){
             yvel += gravity;
         }
         cam.pos[1] += yvel;
-        if(cam.pos[1]<0){
+        bool floorcollide = false;
+        double floorpos = 0;
+        for(int i=0;i<20;i++){
+            Cube *c = cubes+i;
+            double x0,x1,y0,y1,z0,z1;
+            x0 = c->pos.x;
+            y0 = c->pos.y;
+            z0 = c->pos.z;
+            x0 -= c->scale.x/2;
+//            y0 -= c->scale.y/2;
+            z0 += c->scale.z/2;
+            x1 = x0+c->scale.x;
+            y1 = y0+c->scale.y;
+            z1 = z0-c->scale.z;
+            if(within(cam.pos.x,x0,x1)&&within(cam.pos.y,y0-0.0001,y1)&&within(cam.pos.z,z0,z1)){
+                floorcollide = true;
+                floorpos = max(floorpos,max(y0,y1));
+            }
+        }
+        if((cam.pos[1]<0)||(floorcollide)){
             yvel = 0;
-            cam.pos[1] = 0;
+            cam.pos[1] = floorpos;
         }
         view = cam.viewmatrix();
         glBindVertexArray(vao);
         model = mat4(1.0);
-        lightpos = vec3(0.0,1.0,0.0);
         shader.use();
         shader.uniformMatrix4fv("proj",proj);
         shader.uniformMatrix4fv("view",view);
         shader.uniformMatrix4fv("model",model);
         shader.uniform3fv("ambient",ambient);
         shader.uniform1f("ambstr",0.06);
-        shader.uniform3fv("light.color",ambient);
-        shader.uniform3fv("light.pos",cam.pos);//lightpos);
-        shader.uniform1f("light.constant",1.0);
-        shader.uniform1f("light.linear",0.09);
-        shader.uniform1f("light.quadratic",0.032);
-        shader.uniform1f("light.dpfull",cos(radians(3.5)));
-        shader.uniform1f("light.dpzero",cos(radians(5.5)));
-        shader.uniform3fv("light.direction",cam.direction());//vec3(-0.5,-0.5,0.0));
-        shader.uniform1i("light.kind",2);
-        shader.uniform1f("light.diffusestr",1.0);
-        shader.uniform1f("light.specularstr",0.5);
+        lgts[0].color = vec3(1.0);
+        lgts[0].pos = cam.pos;//vec3(0.0,1.0,0.0);
+        lgts[0].constant = 1.0;
+        lgts[0].linear = 0.09;
+        lgts[0].quadratic = 0.032;
+        lgts[0].dpfull = cos(radians(5.0));
+        lgts[0].dpzero = cos(radians(7.5));
+        lgts[0].direction = cam.direction();
+        lgts[0].kind = 2;
+        lgts[0].diffusestr = 1.0;
+        lgts[0].specularstr = 0.75;
+        lgts[0].color = vec3(1.0);
+        lgts[1].pos = vec3(0.0,1.0,abs(fract(frame/100.0)*2.0-1.0)*20.0);
+        lgts[1].constant = 1.0;
+        lgts[1].linear = 0.09;
+        lgts[1].quadratic = 0.032;
+        lgts[1].direction = vec3(0.0,-1.0,0.0);
+        lgts[1].kind = 0;
+        lgts[1].diffusestr = 1.0;
+        lgts[1].specularstr = 0.75;
+        lgts[1].color = vec3(1.0);
+        for(int i=0;i<lcount;i++){
+            char prx[100];
+            strcpy(prx,lpre);
+            strcat(prx,to_string(i).c_str());
+            strcat(prx,lpost);
+            shader.uniform3fv(ucat(prx,"color").c_str(),lgts[i].color);
+            shader.uniform3fv(ucat(prx,"pos").c_str(),lgts[i].pos);
+            shader.uniform1f(ucat(prx,"constant").c_str(),lgts[i].constant);
+            shader.uniform1f(ucat(prx,"linear").c_str(),lgts[i].linear);
+            shader.uniform1f(ucat(prx,"quadratic").c_str(),lgts[i].quadratic);
+            shader.uniform1f(ucat(prx,"dpfull").c_str(),lgts[i].dpfull);
+            shader.uniform1f(ucat(prx,"dpzero").c_str(),lgts[i].dpzero);
+            shader.uniform3fv(ucat(prx,"direction").c_str(),lgts[i].direction);
+            shader.uniform1i(ucat(prx,"kind").c_str(),lgts[i].kind);
+            shader.uniform1f(ucat(prx,"diffusestr").c_str(),lgts[i].diffusestr);
+            shader.uniform1f(ucat(prx,"specularstr").c_str(),lgts[i].specularstr);
+        }
         shader.uniform1f("material.shininess",32);
         shader.uniform3fv("material.specular",vec3(1.0));
         shader.uniform3fv("campos",cam.pos);
         glClearColor(clearr,0.3,0.3,1.0);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        for(double i=0;i<20;i++){
+        for(int i=0;i<20;i++){
 //            mat4 modell = translate(model,vec3(4.0*sin(radians(i*60.0)),0,4.0*cos(radians(i*60.0))));
-            mat4 modell = translate(model,vec3(0.0,0.0,i));
+            mat4 modell = translate(scale(model,cubes[i].scale),cubes[i].pos);
             shader.uniformMatrix4fv("model",modell);
             nmat = mat3(transpose(inverse(modell)));
             shader.uniformMatrix3fv("normalmat",nmat);
@@ -306,7 +397,7 @@ int main(){
         }
         lssh.use();
         model = mat4(1.0);
-        model = translate(model,lightpos);
+        model = translate(model,lgts[1].pos);
         model = scale(model,vec3(0.2));
         lssh.uniformMatrix4fv("proj",proj);
         lssh.uniformMatrix4fv("view",view);
@@ -316,6 +407,7 @@ int main(){
         glfwSwapBuffers(win);
         while((glfwGetTime()-lastFrame)<1.0/fps);
         lastFrame = glfwGetTime();
+        frame++;
     }
     glfwTerminate();
     return 0;

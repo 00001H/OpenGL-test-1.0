@@ -56,15 +56,8 @@ GLFWwindow inline *mkwin(int width,int height,const char* title,GLFWmonitor* mon
     return glfwCreateWindow(width,height,title,monitor,share);
 }
 //Shaders
-unsigned int loadvshad(const char* filename){
-    string vssource;
+unsigned int loadvshad(string vssource){
     unsigned int vshad = glCreateShader(GL_VERTEX_SHADER);
-    try{
-        vssource = loadStringFile(filename);
-    }catch(logic_error&){
-        cerr << "Failed to load vertex shader file:" << filename << endl;
-        return -1;
-    }
     {//cstrcode gets automatically destroyed after exiting this block
         const char* cstrcode = vssource.c_str();
         glShaderSource(vshad,1,&cstrcode,NULL);
@@ -82,15 +75,18 @@ unsigned int loadvshad(const char* filename){
     }
     return vshad;
 }
-unsigned int loadfshad(const char* filename){
-    string fssource;
-    unsigned int fshad = glCreateShader(GL_FRAGMENT_SHADER);
+string loadvshadf(const char* filename){
+    string vssource;
     try{
-        fssource = loadStringFile(filename);
+        vssource = loadStringFile(filename);
     }catch(logic_error&){
         cerr << "Failed to load vertex shader file:" << filename << endl;
-        return -1;
+        return NULL;
     }
+    return vssource;
+}
+unsigned int loadfshad(string fssource){
+    unsigned int fshad = glCreateShader(GL_FRAGMENT_SHADER);
     {//cstrcode gets automatically destroyed after exiting this block
         const char* cstrcode = fssource.c_str();
         glShaderSource(fshad,1,&cstrcode,NULL);
@@ -107,6 +103,16 @@ unsigned int loadfshad(const char* filename){
         return -1;
     }
     return fshad;
+}
+string loadfshadf(const char* filename){
+    string fssource;
+    try{
+        fssource = loadStringFile(filename);
+    }catch(logic_error&){
+        cerr << "Failed to load vertex shader file:" << filename << endl;
+        return NULL;
+    }
+    return fssource;
 }
 unsigned int mkProgram(unsigned int vshad,unsigned int fshad){
     unsigned int program = glCreateProgram();
@@ -132,24 +138,25 @@ class Shader{
         }
     public:
         unsigned int id;
-        string vshadfile,fshadfile;
+        string vshad,fshad;
+        const char *vshadf,*fshadf;//Warning: may be empty
         Shader(){
             id = -1;
         }
-        Shader (string vshadfile,string fshadfile){
-            modify(vshadfile,fshadfile);
+        Shader (string vshad,string fshad,bool compile=true){
+            modify(vshad,fshad,compile);
         }
-        void modify(string newvshadfile,string newfshadfile,bool reload=true){
-            vshadfile = newvshadfile;
-            fshadfile = newfshadfile;
-            if(reload)this->reload();
+        void modify(string newvshad,string newfshad,bool recompile=true){
+            vshad = newvshad;
+            fshad = newfshad;
+            if(recompile)this->recompile();
         }
-        void reload(){
-            unsigned int vshad = loadvshad(vshadfile.c_str());
-            unsigned int fshad = loadfshad(fshadfile.c_str());
-            id = mkProgram(vshad,fshad);
-            glDeleteShader(vshad);
-            glDeleteShader(fshad);
+        void recompile(){
+            unsigned int vshadi = loadvshad(vshad);
+            unsigned int fshadi = loadfshad(fshad);
+            id = mkProgram(vshadi,fshadi);
+            glDeleteShader(vshadi);
+            glDeleteShader(fshadi);
         }
         void use(){
             glUseProgram(id);
@@ -182,4 +189,13 @@ class Shader{
             glUniformMatrix4fv(location,1,GL_FALSE,glm::value_ptr(matrix));
         }
 };
+Shader loadshaderfiles(const char* vsfn,const char* fsfn,bool compile=true){
+    Shader shd = Shader(loadvshadf(vsfn),loadfshadf(fsfn),compile);
+    shd.vshadf = vsfn;
+    shd.fshadf = fsfn;
+    return shd;
+}
+void reloadshaderfiles(Shader shad,bool reload=true){
+    shad.modify(loadvshadf(shad.vshadf),loadfshadf(shad.fshadf),reload);
+}
 #endif
