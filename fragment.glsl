@@ -30,7 +30,7 @@ struct Material{
 };
 out vec4 FragColor;
 
-layout(location = 0) in vec3 fpos;
+layout(location = 0) in vec4 ffpos;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tc;
 #define lightcount $$LIGHT_COUNT
@@ -39,6 +39,7 @@ uniform Material material;
 uniform vec3 ambient;
 uniform vec3 campos;
 uniform double ambstr;
+vec3 fpos;
 vec4 blend(vec4 a,vec4 b){
     return vec4((a.rgb*a.a+b.rgb*b.a)/(a.a+b.a),(1-(1-a.a)*(1-b.a)));
 }
@@ -72,6 +73,7 @@ vec3 calculateLighting(Light lgt,Material mater,vec2 texc, vec3 normx){
     return (diffuse+specular)*attenu+emmis;
 }
 void main(){
+    fpos = ffpos.xyz/ffpos.w;
     vec3 lighting = vec3(0.0);
     lighting += (ambient+texture(material.diffuse,tc).rgb)*ambstr;
     for(int i=0;i<lightcount;i++){
