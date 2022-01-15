@@ -8,8 +8,8 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 #include<glm/gtc/type_ptr.hpp>
-#include"glutils.h"
-#include"cam.h"
+#include"glutils.hpp"
+#include"cam.hpp"
 using namespace std;
 using glm::transpose;
 using glm::inverse;

@@ -1,7 +1,7 @@
 #ifndef _glutils_
 #define _glutils_
 #include<iostream>
-#include"utils.h"
+#include"utils.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #include"stb_image.h"
 #undef STB_IMAGE_IMPLEMENTATION
